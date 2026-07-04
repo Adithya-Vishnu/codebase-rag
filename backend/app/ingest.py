@@ -3,6 +3,7 @@ line-annotated chunks ready for embedding."""
 import os
 import shutil
 import stat
+import sys
 import tempfile
 
 from git import Repo
@@ -99,13 +100,15 @@ def ingest_repo(github_url: str) -> list[dict]:
                 rel_path = os.path.relpath(full, tmp_dir).replace(os.sep, "/")
                 all_chunks.extend(_chunk_file(rel_path, text, language))
     finally:
-        shutil.rmtree(tmp_dir, onexc=_on_rm_error)
+        # onexc was added in 3.12; the deploy image runs 3.11 which uses onerror.
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(tmp_dir, onexc=_on_rm_error)
+        else:
+            shutil.rmtree(tmp_dir, onerror=_on_rm_error)
     return all_chunks
 
 
 if __name__ == "__main__":
-    import sys
-
     url = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/pallets/click"
     result = ingest_repo(url)
     print(f"{len(result)} chunks from {url}")
